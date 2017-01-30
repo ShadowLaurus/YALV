@@ -10,7 +10,7 @@ using YALV.Core.Domain;
 namespace YALV.Core.Providers {
     class XmlEntriesProvider : AbstractEntriesProvider {
         public override IEnumerable<LogItem> GetEntries(string dataSource, FilterParams filter) {
-            using (var stream = new FileStream(dataSource, FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read)) {
+            using (var stream = new FileStream(dataSource, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
                 using (var reader = new StreamReader(stream, true)) {
                     string lineFull = null;
                     string line = null;
@@ -20,8 +20,14 @@ namespace YALV.Core.Providers {
                         } else if (line.StartsWith("</log4j:event>")) {
                             lineFull += line;
 
-                            //yield return GetEntry(dataSource, new StringReader(lineFull));
-                            yield return GetEntries(dataSource, new StringReader(lineFull), filter).FirstOrDefault();
+                            LogItem item = null;
+                            try {
+                                item = GetEntries(dataSource, new StringReader(lineFull), filter).FirstOrDefault();
+                            } catch (Exception ex) {
+                                item = new LogItem() { Level = "ERROR", Message = ex.Message };
+                            }
+
+                            yield return item;
 
                             lineFull = null;
                         } else {
